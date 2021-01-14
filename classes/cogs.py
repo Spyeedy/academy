@@ -122,9 +122,15 @@ class CharactersCog(commands.Cog):
         self.bot = bot
         self.db_service = db_service
 
+    def formatstr(self, str, type):
+        return type.format(str)
+
+    def formatarray(self, arr, type):
+        return [type.format(val) for val in arr]
+
     @commands.command()
     async def build(self, ctx, arg):
-        search = self.db_service.get_collection('builds').find_one({"name": arg})
+        search = self.db_service.get_collection('builds').find_one({"name": arg.lower()})
         if search:
             if search["value"]:
                 await ctx.send(search["value"])
@@ -133,153 +139,124 @@ class CharactersCog(commands.Cog):
         else:
             await ctx.send(CHARACTER_NOT_RECOGNIZED)
 
-    @commands.command()
+    @commands.command(aliases=["p"])
     async def passives(self, ctx, arg):
         character = self.db_service.get_collection('characters').find_one(
-            {'acronym': arg}, {'passives': 3})
+            {'acronym': arg.lower()}, {'passives': 3})
 
-        passives_text = ''
-        for p in character["passives"]:
-            passives_text += "**" + p['name'] + "**\n" + p["description"] + "\n"
-            for buff in p['buffs']:
-                passives_text += "*" + buff + "*\n"
-            passives_text += '\n'
-        await ctx.send(passives_text)
+        if character:
+            out_list = []
+            for sp in character["passives"]:
+                out_list.append(self.formatstr(sp['name'], BOLD))
+                out_list.append(self.formatstr(sp['description'], ITALIC))
+                out_list.extend(self.formatarray(sp['buffs'], ITALIC))
 
-    @commands.command()
+            out = '\n'
+            await ctx.send(out.join(out_list))
+        else:
+            await ctx.send(ABBR_NOT_RECOGNIZED)
+
+    @commands.command(aliases=["sp"])
     async def specials(self, ctx, arg):
         character = self.db_service.get_collection('characters').find_one(
-            {'acronym': arg}, {'specials': 3})
+            {'acronym': arg.lower()}, {'specials': 3})
 
-        specials_text = ''
-        for sp in character["specials"]:
-            specials_text += "**" + sp['name'] + "**\n" + sp["description"] + "\n"
-            for buff in sp['buffs']:
-                specials_text += "*" + buff + "*\n"
-            specials_text += '\n'
-        await ctx.send(specials_text)
+        if character:
+            out_list = []
+            for sp in character["specials"]:
+                out_list.append(self.formatstr(sp['name'], BOLD))
+                out_list.append(self.formatstr(sp['description'], ITALIC))
+                out_list.extend(self.formatarray(sp['buffs'], ITALIC))
 
-    @commands.command()
+            out = '\n'
+            await ctx.send(out.join(out_list))
+        else:
+            await ctx.send(ABBR_NOT_RECOGNIZED)
+
+    @commands.command(aliases=["sm", "ult", "ultimate"])
     async def supermove(self, ctx, arg):
         character = self.db_service.get_collection('characters').find_one(
-            {'acronym': arg}, {'supermove': 1})
+            {'acronym': arg.lower()}, {'supermove': 1})
 
-        sm = character['supermove']
-        supermove_text = "**" + sm['name'] + "**\n" + sm["description"] + "\n"
-        for buff in sm['buffs']:
-            supermove_text += "*" + buff + "*\n"
-        supermove_text += '\n'
-        await ctx.send(supermove_text)
+        if character:
+            out_list = []
+            out_list.append(self.formatstr(character['supermove']['name'], BOLD))
+            out_list.append(self.formatstr(character['supermove']['description'], ITALIC))
+            out_list.extend(self.formatarray(character['supermove']['buffs'], ITALIC))
+
+            out = "\n"
+            await ctx.send(out.join(out_list))
+        else:
+            await ctx.send(ABBR_NOT_RECOGNIZED)
 
     @commands.command()
     async def name(self, ctx, arg):
-        character = self.db_service.get_collection('characters').find_one({'acronym': arg}, {'name': 1})
-        if character:
-            await ctx.send(character["name"])
+        characters = self.db_service.get_collection('characters')
+        lines = []
+        out = '\n'
+        if "list" == arg:
+            for character in characters.find():
+                lines.append(LINE_FORMAT.format(character["acronym"], character["name"]))
+
+            for lines_splitted in [lines[i:i + 50] for i in range(0, len(lines), 50)]:
+                await ctx.send(self.formatstr(out.join(lines_splitted), CHUNKED))
         else:
-            await ctx.send("Abbreviation not recognized.")
+            character = characters.find_one({'acronym': arg.lower()}, {'name': 1})
+            if character:
+                await ctx.send(character["name"])
+            else:
+                await ctx.send(ABBR_NOT_RECOGNIZED)
 
 
 class RolesCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command()
-    async def join(self, ctx, *args):
-         #lookup roles by names to male it workable in Any Server with these Roles
-        role_predator = discord.utils.get(ctx.guild.roles, name = "Predators")
-        role_star = discord.utils.get(ctx.guild.roles, name = "Stars")
-        role_viper = discord.utils.get(ctx.guild.roles, name = "Vipers")
-        role_jumpers = discord.utils.get(ctx.guild.roles, name = "Jumpers")
-        role_eternal = discord.utils.get(ctx.guild.roles, name = "Eternals")
+    def lookup_role(self, ctx, name):
+        return discord.utils.get(ctx.guild.roles, name = name)
 
-        joined = False
-
-        if len(args) == 1:
-            league = args[0].lower()
-            if league in ["predators", "vipers", "stars", "jumpers", "eternals"]:
-                if league == "predators":
-                    if role_predator in ctx.author.roles:
-                        joined = True
-                    else:
-                        await ctx.author.add_roles(role_predator)
-                elif league == "vipers":
-                    if role_viper in ctx.author.roles:
-                        joined = True
-                    else:
-                        await ctx.author.add_roles(role_viper)
-                elif league == "stars":
-                    if role_star in ctx.author.roles:
-                        joined = True
-                    else:
-                        await ctx.author.add_roles(role_star)
-                elif league == "jumpers":
-                    if role_jumpers in ctx.author.roles:
-                        joined = True
-                    else:
-                        await ctx.author.add_roles(role_jumpers)
-                elif league == "eternals":
-                    if role_eternal in ctx.author.roles:
-                        joined = True
-                    else:
-                        await ctx.author.add_roles(role_eternal)
-                if joined:
-                    await ctx.send(ROLE_ALREADY_ADDED.format(ctx.author, args[0]))
-                else:
-                    await ctx.send(ROLE_ADDED_SUCCESSFULLY.format(args[0], ctx.author.mention))
-            else:
-                await ctx.send(ERROR_ON_ROLES_INTERACTION)
-        else:
-            await ctx.send(LITTLE_BOY)
+    def lookup_predefined_roles(self, ctx):
+       return [role for role in [self.lookup_role(ctx, name) for name in ["Predators", "Stars", "Vipers", "Jumpers", "Eternals", "Among"]] if role]
 
     @commands.command()
-    async def remove(self, ctx, *args):
-        #lookup roles by names to male it workable in Any Server with these Roles
-        role_predator = discord.utils.get(ctx.guild.roles, name = "Predators")
-        role_star = discord.utils.get(ctx.guild.roles, name = "Stars")
-        role_viper = discord.utils.get(ctx.guild.roles, name = "Vipers")
-        role_jumpers = discord.utils.get(ctx.guild.roles, name = "Jumpers")
-        role_eternal = discord.utils.get(ctx.guild.roles, name = "Eternals")
+    async def join(self, ctx, *, arg):
+        roles = self.lookup_predefined_roles(ctx)
 
-        removed = False
+        found = False
 
-        if len(args) == 1:
-            league = args[0].lower()
-            if league in ["predators", "vipers", "stars", "jumpers", "eternals"]:
-                if league == "predators":
-                    if role_predator not in ctx.author.roles:
-                        removed = True
-                    else:
-                        await ctx.author.remove_roles(role_predator)
-                elif league == "vipers":
-                    if role_viper not in ctx.author.roles:
-                        removed = True
-                    else:
-                        await ctx.author.remove_roles(role_viper)
-                elif league == "stars":
-                    if role_star not in ctx.author.roles:
-                        removed = True
-                    else:
-                        await ctx.author.remove_roles(role_star),
-                elif league == "jumpers":
-                    if role_jumpers not in ctx.author.roles:
-                        removed = True
-                    else:
-                        await ctx.author.remove_roles(role_jumpers)
-                elif league == "eternals":
-                    if role_eternal not in ctx.author.roles:
-                        removed = True
-                    else:
-                        await ctx.author.remove_roles(role_eternal)
-                if removed:
-                    await ctx.send(ROLE_ALREADY_REMOVED.format(ctx.author.name, args[0]))
+        league = arg.lower()
+
+        for role in roles:
+            if role.name.lower() in league:
+                found = True
+                if role not in ctx.author.roles:
+                    await ctx.author.add_roles(role)
+                    await ctx.send(ROLE_ADDED_SUCCESSFULLY.format(ctx.author, role))
                 else:
-                    await ctx.send(ROLE_REMOVED_SUCCESSFULLY.format(args[0], ctx.author.mention))
-            else:
-                await ctx.send(ERROR_ON_ROLES_INTERACTION)
-        else:
-            await ctx.send(LITTLE_BOY)
+                    await ctx.send(ROLE_ALREADY_ADDED.format(ctx.author, role))
 
+        if not found:
+            await ctx.send(ERROR_ON_ROLES_INTERACTION)
+
+    @commands.command()
+    async def remove(self, ctx, *, arg):
+        roles = self.lookup_predefined_roles(ctx)
+
+        found = False
+
+        league = arg.lower()
+
+        for role in roles:
+            if role.name.lower() in league:
+                found = True
+                if role in ctx.author.roles:
+                    await ctx.author.remove_roles(role)
+                    await ctx.send(ROLE_REMOVED_SUCCESSFULLY.format(ctx.author, role))
+                else:
+                    await ctx.send(ROLE_ALREADY_REMOVED.format(ctx.author, role))
+
+        if not found:
+            await ctx.send(ERROR_ON_ROLES_INTERACTION)
 
 class JumpCog(commands.Cog):
     def __init__(self, bot, db_service):
@@ -355,7 +332,10 @@ class JumpCog(commands.Cog):
             member = await self.bot.fetch_user(int(jumper["memberId"]))
             end_time = datetime.datetime.strptime(jumper['end'], DATE_TIME_FORMAT)
             if end_time <= now_time:
-                await member.send("Your jump cooldown has expired.\n**Have fun!**")
+                try:
+                    await member.send("Your jump cooldown has expired.\n**Have fun!**")
+                except Exception:
+                    pass
                 cds.update_one(
                     filter=jumper,
                     update={"$set": {'warned': True}})
@@ -420,22 +400,35 @@ class MessagingCog(commands.Cog):
         self.create_func_dict()
 
 
+    @commands.command(name="rm")
+    async def delete_messages(self, ctx, *, arg):
+        async for message in ctx.channel.history(limit=100):
+            if arg.lower() in message.content.lower():
+               await message.delete()
+
+
     @commands.command()
     async def dmr(self, ctx, role: discord.Role, *, message):
-        knights_role = discord.utils.get(ctx.guild.roles, name = "Knights")
+        random = discord.utils.get(ctx.guild.roles, name = "random")
 
-        if knights_role in ctx.author.roles:
+        if random in ctx.author.roles:
             for m in role.members:
-                await m.send(message)
+                try:
+                    await m.send(message)
+                except Exception:
+                    pass
         else:
             await ctx.send(NO_ACCESS.format(ctx.author))
 
     @commands.command()
     async def dmp(self, ctx, member: discord.Member, *, message):
-        knights_role = discord.utils.get(ctx.guild.roles, name = "Knights")
+        random = discord.utils.get(ctx.guild.roles, name = "random")
 
-        if knights_role in ctx.author.roles:
-            await member.send(message)
+        if random in ctx.author.roles:
+            try:
+                await member.send(message)
+            except Exception:
+                pass
         else:
             await ctx.send(NO_ACCESS.format(ctx.author))
 
@@ -452,7 +445,7 @@ class MessagingCog(commands.Cog):
 
     def create_func_dict(self):
         self.func_dict = {}
-        for warn in self.db_service.get_collection("repeatable_warnings").find():
+        for warn in self.db_service.get_collection("repeatable_warnings").find({"enabled": True}):
             channel_id = warn["channel"]
             for guild in self.bot.guilds:
                 for channel in guild.channels:
@@ -460,7 +453,6 @@ class MessagingCog(commands.Cog):
                         message = MSG_FORMAT.format(warn["name"], warn["message"])
                         self.func_dict[warn["name"]] = Sender(channel, message, warn["interval"])
                         self.func_dict[warn["name"]].start()
-                        break
 
     async def start_some(self, ctx, arg):
         parts = arg.split(' ', 2)
@@ -479,7 +471,8 @@ class MessagingCog(commands.Cog):
             "channel": ctx.channel.id,
             "interval": minutes,
             "message": parts[2],
-            "name": marker
+            "name": marker,
+            "enabled": True
             })
 
     async def stop_some(self, ctx, arg):
