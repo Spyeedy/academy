@@ -1,4 +1,5 @@
 ###################################################
+LOGGED = "Bot Logged in as id: {}, name: {} \n"
 HELP = """**List of Academy bot commands**
 *commands to see some league codes(to find them in game):*
 \t*major league codes:*
@@ -7,6 +8,7 @@ HELP = """**List of Academy bot commands**
 -vipers (Academy Vipers)
 -stars (Academy Stars)
 -eternal (Academy Eternals)
+-rebels (Academy Rebels)
 ```
 \t*additional league codes (for jumps):*
 ```
@@ -94,18 +96,24 @@ JOIN_MESSAGE = """Hey {0.mention}, welcome to **The Academy!**
 Just visiting? Feel free to cruise with us at the Academy!
 Or maybe you are looking for a league.
 In our arsenal, we have four, depends on your raid preference time:
-Vipers raid around 1-2 AM GMT.
-Stars raid around 1 PM-2 PM GMT.
-Predators raid around 5-7 PM GMT.
-Eternals raid around 2-3 PM GMT.
+**V**ipers raid around 1-2 AM GMT. (T7)
+**P**redators raid around 6-7 PM GMT. (T7)
+**E**ternals raid around 6 PM GMT. (T6)
+**R**ebels raid free hits any hour (T6)
+**S**tars raid around 1-2 PM GMT. (T7).
 To see in-game code of chosen league, please type one of these commands:
-    -predators, -stars, -vipers, eternals
+    -predators, -stars, -vipers, eternals, rebels
 To see chats of chosen league, you need to have corresponding role.
 So, type: -join <league name here> (-join stars)"""
+
+LEFT_SERVER = "{0.display_name} left the Academy!"
+#special for akpro
+AKPRO = "Hey, new guy arrived into server. His name - {0.name}"
 ###################################################
 
 ###################################################
 #main constant (mostly usable)
+HOURS_FORMAT = "%H:%M:%S"
 TIME = '{0}\n***This is Academy time (GMT)***'
 DATE_TIME_FORMAT = "%d %B %Y %I:%M %p"
 ###################################################
@@ -116,7 +124,7 @@ ROLE_ALREADY_ADDED = "{0.mention}, you have already promoted to {1.name} earlier
 ROLE_ADDED_SUCCESSFULLY = "Congratulations, {0.mention}, you have been promoted to the {1.name}. :thumbsup:"
 ROLE_ALREADY_REMOVED = "{0.mention}, you have already demoted from {1.name} earlier!"
 ROLE_REMOVED_SUCCESSFULLY = "Congratulations, {0.mention}, you have been demoted from {1.name}. :thumbsup:"
-ERROR_ON_ROLES_INTERACTION = '**Warning!**\nYou should interact only with these roles:\npredators, vipers, stars, eternals, jumpers, among us!'
+ERROR_ON_ROLES_INTERACTION = '**Warning!**\nYou should interact only with these roles:\npredators, vipers, stars, eternals, jumpers, rebels, academy, sinister, among us!'
 LEAGUE_RAID_WARNING = """Hello, {0.name}
 
 Since you joined {1.name}, you need to know how we attack raids.
@@ -137,6 +145,7 @@ Next, we conduct either one day or two day raids. (check the raid plan)
 
 One day raid means we finish the entire raid in 3 pips, so we must plan our teams wisely for maximum damage wherever needed,
 Two day raid means we finish the raid in 6 pips, over 2 days."""
+AT_LEAST_4 = "Please enter at least 4 characters to search for roles."
 ###################################################
 
 ###################################################
@@ -148,6 +157,7 @@ Full set costs {3} gear materials
 """
 GEAR_COST_OUT_RANGE = "Gear level out of range, only from 1 to 70"
 GEAR_COST_WHOLE_NUM = "Must be a whole number"
+GEAR_SECOND_LESS_THAN_FIRST = "First number ({}) cannot be more than or equal to second number ({})"
 ###################################################
 
 ###################################################
@@ -161,12 +171,23 @@ WATCH_INACTIVE = "Watching is **inactive**."
 WATCH_STARTED = "Watching **started**."
 WATCH_CANCELLED = "Watching **cancelled**."
 PARAMETER_NOT_RECOGNIZED = "Parameter not recognized."
-CD_STATUS = '{0.mention}, {1} days before your cooldown expires.'
-CD_EXPIRED = '{0.mention}, cooldown expired.'
-CD_START_MESSAGE = """**cooldown** (re)started for {0.mention} at {1} AT.
+CD_STATUS = '{0.mention}, {1} days {2} hours {3} minutes before your cooldown expires.'
+CD_EXPIRED = '{0.mention}, congrats! your cooldown has expired.'
+CD_DELETED = '{0.mention}, your cooldown successfully stopped.'
+CD_START_MESSAGE = """New **cooldown** started for {0.mention} at {1} AT.
 **It** will end on {2} AT.
 **You** *will recieve a warning*.
 """
+NO_CD = "I am sorry, {0.mention}. I can't see any cooldown records for you in my database."
+DAYS = 21
+CD_INFO = """
+                wrong usage of command '-cd'
+                syntax: -cd [OPTION]
+                where option can be from list:
+                 - start
+                 - status
+                 - stop
+            """
 ###################################################
 
 ###################################################
@@ -178,15 +199,19 @@ GKETR1 | Raid 7 | 1-2 AM GMT
 ```
 ```yaml
 Academy Predator
-2EH9EW | Raid 6-7| 5-7 PM GMT
+2EH9EW | Raid 7| 6-7 PM GMT
 ```
 ```yaml
 Academy Eternals
-R66C8M | Raid 6 | 2-3 PM GMT
+R66C8M | Raid 6 | 6 PM GMT
 ```
 ```yaml
 Academy Stars
-P87X95 | Raid 6 | 1-2 PM GMT
+P87X95 | Raid 7 | 1-2 PM GMT
+```
+```yaml
+Academy Rebels
+1R125Q | Raid 6 | Free Hits Anytime
 ```
 """
 PREDATORS = '2EH9EW'
@@ -196,6 +221,11 @@ TOWER = 'AP1BS1'
 KNIGHTS = '8R5QGE'
 REVERSE = 'EFQGZ2'
 ETERNAL = 'R66C8M'
+REBEL = '1R125Q'
+FLECK = 'E24WGA'
+SQUINTS = 'THS8BC'
+MVM2 = '3E72EM'
+IMMORTAL = '36ZAC0'
 ###################################################
 
 ###################################################
@@ -229,3 +259,14 @@ BOLD = "**{}**"
 ITALIC = "*{}*"
 STD = "{}"
 CHUNKED = "```\n{}\n```"
+###################################################
+
+###################################################
+#unscheduled
+INVALID_NUMBER_ARGUMENTS = "Invalid number of arguments."
+DEBUG_MESSAGE = "{0.display_name} sent message '{1.content}' to {2.mention}."
+NOT_ENOUGH_POWER = "Sorry, you have not enough power."
+DELETION_STARTED = "deletion started."
+DELETION_PROCESS = "{} messages deleted. Goal is {}"
+DELETION_STOPPED = "{} messages deleted. Stopped."
+NOT_VALID_NUMBER = "Please, try valid number."
